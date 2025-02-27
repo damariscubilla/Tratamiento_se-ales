@@ -1,0 +1,50 @@
+import numpy as np
+import pywt
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 1️⃣ Cargar los datos desde Excel (suponiendo que están en la columna 'C')
+filename = "21022025_Ensayo_7.xlsx"
+sheet_name = "21022025_Ensayo_7"
+df = pd.read_excel(filename, sheet_name=sheet_name)  
+
+# 2️⃣ Extraer la columna C (tercera columna, índice 2 en Python)
+signal_data = df.iloc[:, 2].dropna().values  # Elimina valores NaN
+
+# 3️⃣ Definir parámetros de descomposición
+wavelet = 'db4'  # Tipo de wavelet (Daubechies 4)
+level = 4        # Número de niveles de descomposición
+
+# 4️⃣ Realizar la descomposición Wavelet
+coeffs = pywt.wavedec(signal_data, wavelet, level=level)
+
+# 5️⃣ Extraer coeficientes de cada nivel
+approx = coeffs[0]  # Coeficiente de aproximación
+details = coeffs[1:] # Coeficientes de detalle para cada nivel
+
+# 6️⃣ Graficar los coeficientes de detalle y la aproximación
+plt.figure(figsize=(10, 6))
+
+for i, detail in enumerate(details):
+    plt.subplot(len(details) + 1, 1, i + 1)
+    plt.plot(detail, label=f'Detalle Nivel {i+1}')
+    plt.legend()
+    plt.grid()
+
+plt.subplot(len(details) + 1, 1, len(details) + 1)
+plt.plot(approx, label="Aproximación")
+plt.legend()
+plt.grid()
+
+plt.suptitle("Descomposición Wavelet Multiresolución")
+plt.show()
+
+# 7️⃣ Guardar los coeficientes en un archivo Excel
+data_dict = {"Aproximación": approx}
+for i, detail in enumerate(details):
+    data_dict[f"Detalle Nivel {i+1}"] = detail
+
+df_export = pd.DataFrame(dict([(k, pd.Series(v)) for k, v in data_dict.items()]))
+df_export.to_excel("Wavelet_Coefficients.xlsx", index=False)
+
+print("Coeficientes exportados a Wavelet_Coefficients.xlsx ✅")
