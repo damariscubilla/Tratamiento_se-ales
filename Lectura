@@ -1,0 +1,66 @@
+import numpy as np
+import pywt
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 1️⃣ Definir el nombre del archivo
+filename = "21022025_Ensayo_7.csv"  # Asegúrate de que el archivo esté en el mismo directorio o usa la ruta completa
+
+# 2️⃣ Cargar los datos desde el archivo CSV
+df = pd.read_csv(filename)
+
+# 3️⃣ Limpiar los datos y asegurarse de que sean numéricos
+df_cleaned = df.apply(pd.to_numeric, errors='coerce').dropna()
+
+# 4️⃣ Definir parámetros de descomposición
+wavelet = 'db4'  # Tipo de wavelet Daubechies 4
+level = 5        # Número de niveles de descomposición
+
+# Diccionario para almacenar los resultados
+results = {}
+
+# 5️⃣ Procesar cada columna de resistencia
+for column in df_cleaned.columns:
+    signal_data = df_cleaned[column].values  # Extraer datos numéricos
+    
+    # Aplicar la descomposición Wavelet
+    coeffs = pywt.wavedec(signal_data, wavelet, level=level)
+    
+    # Extraer coeficientes
+    approx = coeffs[0]  # Coeficiente de aproximación
+    details = coeffs[1:] # Coeficientes de detalle
+    
+    # Guardar los coeficientes en el diccionario
+    results[column] = {"Aproximación": approx}
+    for i, detail in enumerate(details):
+        results[column][f"Detalle Nivel {i+1}"] = detail
+    
+    # 6️⃣ Graficar la descomposición para cada resistencia
+    plt.figure(figsize=(10, 6))
+    
+    for i, detail in enumerate(details):
+        plt.subplot(len(details) + 1, 1, i + 1)
+        plt.plot(detail, label=f'Detalle Nivel {i+1}', color='orange')
+        plt.legend()
+        plt.grid()
+    
+    plt.subplot(len(details) + 1, 1, len(details) + 1)
+    plt.plot(approx, label="Aproximación", color='red')
+    plt.legend()
+    plt.grid()
+    
+    plt.suptitle(f"Descomposición Wavelet Multiresolución - {column}")
+    plt.show()
+
+# 7️⃣ Guardar los coeficientes en un archivo Excel
+excel_data = {}
+
+for column, coeffs in results.items():
+    for level, data in coeffs.items():
+        excel_data[f"{column} - {level}"] = pd.Series(data)
+
+df_export = pd.DataFrame(excel_data)
+df_export.to_excel("Wavelet_Coefficients_Cleaned.xlsx", index=False)
+
+print("Coeficientes exportados a Wavelet_Coefficients_Cleaned.xlsx ✅")
+
