@@ -1,0 +1,71 @@
+import numpy as np
+import pywt
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# 1️⃣ Definir el nombre del archivo
+filename = "21022025_Ensayo_7.csv"  
+
+# 2️⃣ Cargar los datos desde el archivo CSV
+df = pd.read_csv(filename)
+
+# 3️⃣ Limpiar los datos y asegurarse de que sean numéricos
+df_cleaned = df.apply(pd.to_numeric, errors='coerce').dropna()
+
+# 4️⃣ Definir parámetros de descomposición
+wavelet_options = ['db4', 'sym5', 'coif3', 'haar']  # Diferentes wavelets a probar
+levels_options = [3, 4, 5, 6]  # Diferentes niveles de descomposición
+duration = 5  # Duración en segundos (según el dato)
+Fs = len(df_cleaned) / duration  # Calcular la frecuencia de muestreo
+time = np.linspace(0, duration, len(df_cleaned))  # Crear eje de tiempo
+
+# Diccionario para almacenar los resultados
+results = {}
+
+# 5️⃣ Procesar cada columna de resistencia
+for column in df_cleaned.columns:
+    signal_data = df_cleaned[column].values  # Extraer datos numéricos
+    
+    for wavelet in wavelet_options:
+        for level in levels_options:
+            # Aplicar la descomposición Wavelet
+            coeffs = pywt.wavedec(signal_data, wavelet, level=level)
+            
+            # Extraer coeficiente de aproximación
+            approx = coeffs[0]
+            details = coeffs[1:]
+            
+            # Guardar los coeficientes en el diccionario
+            key = f"{column} - {wavelet} - Nivel {level}"
+            results[key] = {"Aproximación": approx}
+            for i, detail in enumerate(details):
+                results[key][f"Detalle Nivel {i+1}"] = detail
+            
+            # 6️⃣ Graficar la descomposición
+            plt.figure(figsize=(10, 6))
+            
+            for i, detail in enumerate(details):
+                plt.subplot(len(details) + 1, 1, i + 1)
+                plt.plot(np.linspace(0, duration, len(detail)), detail, label=f'Detalle Nivel {i+1}', color='orange')
+                plt.legend()
+                plt.grid()
+            
+            plt.subplot(len(details) + 1, 1, len(details) + 1)
+            plt.plot(np.linspace(0, duration, len(approx)), approx, label=f"Aproximación {wavelet} - Nivel {level}", color='red')
+            plt.legend()
+            plt.grid()
+            
+            plt.suptitle(f"Descomposición Wavelet - {column} - {wavelet} - Nivel {level}")
+            plt.xlabel("Tiempo (s)")
+            plt.show()
+
+# 7️⃣ Guardar los coeficientes en un archivo Excel
+excel_data = {}
+for key, coeffs in results.items():
+    for level, data in coeffs.items():
+        excel_data[f"{key} - {level}"] = pd.Series(data)
+
+df_export = pd.DataFrame(excel_data)
+df_export.to_excel("Wavelet_Coefficients_Comparison.xlsx", index=False)
+
+print("Coeficientes exportados a Wavelet_Coefficients_Comparison.xlsx ✅")
